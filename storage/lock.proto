@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package storage;
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
 
 option go_package = "github.com/gcp-services/lock/storage";
 
@@ -23,7 +24,7 @@ message LockRequest {
 
   // Timeout defines how long a LockRequest should block at most, in seconds,
   // waiting for a valid lock to be acquired.
-  int64 timeout = 2;
+  google.protobuf.Duration timeout = 2;
 }
 
 message LockResponse {

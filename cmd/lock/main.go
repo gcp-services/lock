@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net"
 
@@ -21,7 +22,13 @@ func main() {
 
 	s := grpc.NewServer()
 
-	pb.RegisterLockServiceServer(s, &backends.Spanner{})
+	// TODO(lobato): Create config
+	sp, err := backends.NewSpanner(context.Background(), "projects/test/instances/test/databases/test")
+	if err != nil {
+		log.Fatalf("failed to create spanner backend: %v", err)
+	}
+
+	pb.RegisterLockServiceServer(s, sp)
 	log.Printf("starting server on port %s", port)
 	if err := s.Serve(l); err != nil {
 		log.Fatalf("failed to serve: %v", err)
