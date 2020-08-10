@@ -3,24 +3,43 @@ package backends
 import (
 	"context"
 	"testing"
+	"time"
 
 	"cloud.google.com/go/spanner/spannertest"
+	pb "github.com/gcp-services/lock/storage"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func TestNewSpanner(t *testing.T) {
+func createDatabase() {
+}
+func TestEndToEnd(t *testing.T) {
 	server, err := spannertest.NewServer(":19999")
 	if err != nil {
 		t.Fatalf("unable to setup server: %v", err)
 	}
 	ctx := context.Background()
+
 	conn, err := grpc.Dial(server.Addr, grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("unable to dial server: %v", err)
 	}
-	_, err = NewSpanner(ctx, "projects/test/instances/test/databases/test", option.WithGRPCConn(conn))
+
+	sp, err := NewSpanner(ctx, "projects/test/instances/test/databases/test", option.WithGRPCConn(conn))
 	if err != nil {
 		t.Fatalf("unable to create client: %v", err)
+	}
+	expires := time.Now().Add(time.Second * 30)
+	_, err = sp.TryLock(ctx, &pb.TryLockRequest{
+		Lock: &pb.Lock{
+			Uuid:    "1234",
+			Owner:   "1234",
+			Expires: timestamppb.New(expires),
+		},
+	})
+
+	if err != nil {
+		t.Fatalf("error trying to lock: %v", err)
 	}
 }
