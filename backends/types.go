@@ -1,7 +1,14 @@
 package backends
 
-import "context"
+import (
+	"context"
+	"fmt"
+)
 
 type Database interface {
 	Connect(ctx context.Context, address string) error
 }
+
+var (
+	ErrLockBusy = fmt.Errorf("lock has already been acquired by another process")
+)

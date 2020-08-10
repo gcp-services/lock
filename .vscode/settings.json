@@ -7,7 +7,7 @@
         "cmd": "bazel run //:gazelle && bazel run //:gazelle -- update-repos -from_file=go.mod"
       },
       {
-        "match": "storage/*.proto",
+        "match": "\\.proto$",
         "isAsync": true,
         "cmd": "blaze run //storage:lockpb_go_proto_link"
       },

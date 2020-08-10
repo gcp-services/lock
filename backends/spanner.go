@@ -37,6 +37,11 @@ func (s *Spanner) Lock(ctx context.Context, in *pb.LockRequest) (*pb.LockRespons
 	return nil, nil
 }
 
+// Refresh will refresh a lock lease and extend the time a valid lock is held.
+func (s *Spanner) Refresh(ctx context.Context, in *pb.RefreshRequest) (*pb.RefreshResponse, error) {
+	return nil, nil
+}
+
 // Release will release a lock that was previously acquired.
 func (s *Spanner) Release(ctx context.Context, in *pb.ReleaseRequest) (*pb.ReleaseResponse, error) {
 	return nil, nil

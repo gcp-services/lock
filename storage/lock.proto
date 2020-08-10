@@ -31,6 +31,14 @@ message LockResponse {
 
 }
 
+message RefreshRequest {
+  Lock lock = 1;
+}
+
+message RefreshResponse {
+
+}
+
 message ReleaseRequest {
   Lock lock = 1;
 }
@@ -42,5 +50,7 @@ message ReleaseResponse {
 service LockService {
   rpc TryLock(TryLockRequest) returns (TryLockResponse);
   rpc Lock(LockRequest) returns (LockResponse);
+  rpc Refresh(RefreshRequest) returns (RefreshResponse);
   rpc Release(ReleaseRequest) returns (ReleaseResponse);
+  
 }
