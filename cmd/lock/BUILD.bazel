@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["main.go"],
+    importpath = "github.com/gcp-services/lock/cmd/lock",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//backends:go_default_library",
+        "//storage:go_default_library",
+        "@org_golang_google_grpc//:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "lock",
+    embed = [":go_default_library"],
+    visibility = ["//visibility:public"],
+)

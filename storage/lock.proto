@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package storage;
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/gcp-services/lock/storage";
+
+message Lock {
+  string uuid = 1;
+  string owner = 2;
+  google.protobuf.Timestamp expires = 3;
+}
+
+message TryLockRequest {
+  Lock lock = 1;
+}
+message TryLockResponse {
+
+}
+
+message LockRequest {
+  Lock lock = 1;
+
+  // Timeout defines how long a LockRequest should block at most, in seconds,
+  // waiting for a valid lock to be acquired.
+  int64 timeout = 2;
+}
+
+message LockResponse {
+
+}
+
+message ReleaseRequest {
+  Lock lock = 1;
+}
+
+message ReleaseResponse {
+
+}
+
+service LockService {
+  rpc TryLock(TryLockRequest) returns (TryLockResponse);
+  rpc Lock(LockRequest) returns (LockResponse);
+  rpc Release(ReleaseRequest) returns (ReleaseResponse);
+}
