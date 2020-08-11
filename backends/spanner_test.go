@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"cloud.google.com/go/spanner/spannertest"
 	pb "github.com/gcp-services/lock/storage"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
@@ -15,13 +14,14 @@ import (
 func createDatabase() {
 }
 func TestEndToEnd(t *testing.T) {
-	server, err := spannertest.NewServer(":19999")
-	if err != nil {
-		t.Fatalf("unable to setup server: %v", err)
-	}
 	ctx := context.Background()
-
-	conn, err := grpc.Dial(server.Addr, grpc.WithInsecure())
+	/*
+		server, err := spannertest.NewServer(":9010")
+		if err != nil {
+			t.Fatalf("unable to create test server: %v", err)
+		}
+	*/
+	conn, err := grpc.Dial("local.spanner:9010", grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("unable to dial server: %v", err)
 	}

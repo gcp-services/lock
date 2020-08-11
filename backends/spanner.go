@@ -2,7 +2,8 @@ package backends
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
@@ -16,13 +17,18 @@ import (
 
 // Spanner is an implementation of the Lock server that uses Spanner as a backing store.
 type Spanner struct {
-	client   *spanner.Client
-	admin    *admin.DatabaseAdminClient
-	database string
+	client       *spanner.Client
+	admin        *admin.DatabaseAdminClient
+	databasePath string
+	databaseName string
+	instance     string
 }
 
 // NewSpanner creates a new connection to Spanner and returns the Spanner object.
 func NewSpanner(ctx context.Context, database string, opts ...option.ClientOption) (*Spanner, error) {
+	instance := strings.Join(strings.Split(database, "/")[:4], "/")
+	databaseName := strings.Split(database, "/")[5]
+
 	adminClient, err := admin.NewDatabaseAdminClient(ctx, opts...)
 	if err != nil {
 		return nil, err
@@ -34,30 +40,52 @@ func NewSpanner(ctx context.Context, database string, opts ...option.ClientOptio
 	}
 
 	sp := &Spanner{
-		client:   client,
-		admin:    adminClient,
-		database: database,
+		client:       client,
+		admin:        adminClient,
+		databasePath: database,
+		databaseName: databaseName,
+		instance:     instance,
 	}
 
-	sp.createSchema(ctx)
+	if err := sp.createSchema(ctx); err != nil {
+		return nil, err
+	}
 
 	return sp, nil
 }
 
-func (s *Spanner) createSchema(ctx context.Context) {
+func (s *Spanner) createSchema(ctx context.Context) error {
 	_, err := s.admin.GetDatabase(ctx, &database.GetDatabaseRequest{
-		Name: s.database,
+		Name: s.databasePath,
 	})
-	if err != nil {
-		log.Printf("db:%v", err)
+
+	switch {
+	case spanner.ErrCode(err) == codes.NotFound:
+		break
+	default:
+		return err
 	}
 
-	/*
-		op, err := s.admin.CreateDatabase(ctx, &database.CreateDatabaseRequest{
-			Parent:          s.database,
-			CreateStatement: "CREATE DATABASE Locks",
-		})
-	*/
+	op, err := s.admin.CreateDatabase(ctx, &database.CreateDatabaseRequest{
+		Parent:          s.instance,
+		CreateStatement: fmt.Sprintf("CREATE DATABASE %s", s.databaseName),
+		ExtraStatements: []string{
+			`CREATE TABLE Locks (
+				uuid STRING(MAX) NOT NULL,
+				owner STRING(MAX) NOT NULL,
+				expires TIMESTAMP NOT NULL,
+				) PRIMARY KEY (uuid)`,
+		},
+	})
+
+	if err != nil {
+		return err
+	}
+
+	if _, err := op.Wait(ctx); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Spanner) applyLock(txn *spanner.ReadWriteTransaction, in *pb.TryLockRequest) error {
