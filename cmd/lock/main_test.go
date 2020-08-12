@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/viper"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -139,6 +140,42 @@ func TestServer(t *testing.T) {
 				Owner:   "1234",
 				Expires: timestamppb.New(expires),
 			},
+		}); err != nil {
+			t.Fatalf("error trying to lock: %v", err)
+		}
+
+		expires = time.Now().Add(time.Second * 3)
+		// Lock again with a longer expiry.
+		if _, err = svc.Lock(ctx, &pb.LockRequest{
+			Lock: &pb.Lock{
+				Uuid:    "1234",
+				Owner:   "1234",
+				Expires: timestamppb.New(expires),
+			},
+		}); err != nil {
+			t.Fatalf("error trying to lock: %v", err)
+		}
+
+		// Try to lock, while waiting only 100 ms.
+		if _, err = svc.Lock(ctx, &pb.LockRequest{
+			Lock: &pb.Lock{
+				Uuid:    "1234",
+				Owner:   "1234",
+				Expires: timestamppb.New(expires),
+			},
+			Timeout: durationpb.New(time.Millisecond * 100),
+		}); err != backends.ErrLockBusy {
+			t.Fatalf("lock should be busy, instead: %v", err)
+		}
+
+		// Try to lock and wait for the previous lock to expire.
+		if _, err = svc.Lock(ctx, &pb.LockRequest{
+			Lock: &pb.Lock{
+				Uuid:    "1234",
+				Owner:   "1234",
+				Expires: timestamppb.New(expires),
+			},
+			Timeout: durationpb.New(time.Second * 4),
 		}); err != nil {
 			t.Fatalf("error trying to lock: %v", err)
 		}
