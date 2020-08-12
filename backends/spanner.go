@@ -47,14 +47,30 @@ func NewSpanner(ctx context.Context, database string, opts ...option.ClientOptio
 		instance:     instance,
 	}
 
-	if err := sp.createSchema(ctx); err != nil {
-		return nil, err
-	}
-
 	return sp, nil
 }
 
-func (s *Spanner) createSchema(ctx context.Context) error {
+// CreateSchema creates the schema for this database.
+func (s *Spanner) CreateSchema(ctx context.Context, testing bool) error {
+	if testing {
+		op, err := s.admin.UpdateDatabaseDdl(ctx, &database.UpdateDatabaseDdlRequest{
+			Database: s.databaseName,
+			Statements: []string{
+				`CREATE TABLE Locks (
+					uuid STRING(MAX) NOT NULL,
+					owner STRING(MAX) NOT NULL,
+					expires TIMESTAMP NOT NULL,
+					) PRIMARY KEY (uuid)`,
+			},
+		})
+		if err != nil {
+			return err
+		}
+
+		err = op.Wait(ctx)
+		return err
+	}
+
 	_, err := s.admin.GetDatabase(ctx, &database.GetDatabaseRequest{
 		Name: s.databasePath,
 	})
@@ -71,10 +87,10 @@ func (s *Spanner) createSchema(ctx context.Context) error {
 		CreateStatement: fmt.Sprintf("CREATE DATABASE %s", s.databaseName),
 		ExtraStatements: []string{
 			`CREATE TABLE Locks (
-				uuid STRING(MAX) NOT NULL,
-				owner STRING(MAX) NOT NULL,
-				expires TIMESTAMP NOT NULL,
-				) PRIMARY KEY (uuid)`,
+						uuid STRING(MAX) NOT NULL,
+						owner STRING(MAX) NOT NULL,
+						expires TIMESTAMP NOT NULL,
+						) PRIMARY KEY (uuid)`,
 		},
 	})
 
