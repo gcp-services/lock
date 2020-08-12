@@ -163,5 +163,29 @@ func (s *Spanner) Refresh(ctx context.Context, in *pb.RefreshRequest) (*pb.Refre
 
 // Release will release a lock that was previously acquired.
 func (s *Spanner) Release(ctx context.Context, in *pb.ReleaseRequest) (*pb.ReleaseResponse, error) {
+	if _, err := s.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		row, err := txn.ReadRow(ctx, "Locks", spanner.Key{in.Lock.GetUuid()}, []string{"uuid", "owner", "expires"})
+		switch {
+		case spanner.ErrCode(err) == codes.NotFound:
+			return nil
+		case err != nil:
+			return err
+		}
+
+		// Lock found, read it.
+		readLock := pb.Lock{}
+		var expires time.Time
+		if err = row.Columns(&readLock.Uuid, &readLock.Owner, &expires); err != nil {
+			return err
+		}
+
+		if readLock.Owner != in.Lock.Owner {
+			return ErrLockInvalidOwner
+		}
+		m := spanner.Delete("Locks", spanner.Key{in.Lock.GetUuid()})
+		return txn.BufferWrite([]*spanner.Mutation{m})
+	}); err != nil {
+		return nil, err
+	}
 	return nil, nil
 }

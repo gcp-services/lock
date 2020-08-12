@@ -59,4 +59,51 @@ func TestEndToEnd(t *testing.T) {
 		t.Fatalf("expected lock to be busy, instead: %v", err)
 	}
 
+	// Atempt to unlock with the incorrect owner.
+	if _, err = sp.Release(ctx, &pb.ReleaseRequest{
+		Lock: &pb.Lock{
+			Uuid:    "1234",
+			Owner:   "12345",
+			Expires: timestamppb.New(expires),
+		},
+	}); err != ErrLockInvalidOwner {
+		t.Fatalf("expected lock to fail with invalid owner, instead: %v", err)
+	}
+
+	// Unlock with the correct owner.
+	if _, err = sp.Release(ctx, &pb.ReleaseRequest{
+		Lock: &pb.Lock{
+			Uuid:    "1234",
+			Owner:   "1234",
+			Expires: timestamppb.New(expires),
+		},
+	}); err != nil {
+		t.Fatalf("expected to unlock, instead: %v", err)
+	}
+
+	// Lock with a short expiry.
+	expires = time.Now().Add(time.Millisecond * 100)
+	if _, err = sp.TryLock(ctx, &pb.TryLockRequest{
+		Lock: &pb.Lock{
+			Uuid:    "1234",
+			Owner:   "1234",
+			Expires: timestamppb.New(expires),
+		},
+	}); err != nil {
+		t.Fatalf("error trying to lock: %v", err)
+	}
+
+	// Allow the lock to expire.
+	time.Sleep(time.Millisecond * 200)
+
+	// Overwrite the lock that has expired.
+	if _, err = sp.TryLock(ctx, &pb.TryLockRequest{
+		Lock: &pb.Lock{
+			Uuid:    "1234",
+			Owner:   "1234",
+			Expires: timestamppb.New(expires),
+		},
+	}); err != nil {
+		t.Fatalf("error trying to lock: %v", err)
+	}
 }
