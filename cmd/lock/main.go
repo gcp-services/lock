@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"time"
@@ -9,11 +10,9 @@ import (
 	"github.com/gcp-services/lock/backends"
 	pb "github.com/gcp-services/lock/storage"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	"google.golang.org/grpc"
-)
-
-const (
-	port = ":9876"
 )
 
 type service struct {
@@ -69,29 +68,76 @@ func (s *service) Lock(ctx context.Context, in *pb.LockRequest) (*pb.LockRespons
 func (s *service) Refresh(ctx context.Context, in *pb.RefreshRequest) (*pb.RefreshResponse, error) {
 	return nil, nil
 }
+
 func (s *service) Release(ctx context.Context, in *pb.ReleaseRequest) (*pb.ReleaseResponse, error) {
-	return nil, nil
+	return s.db.Release(ctx, in)
+}
+
+func createService() (*service, error) {
+	var svc service
+
+	switch viper.GetString("backend") {
+	case "spanner":
+		path := viper.GetString("spanner.database")
+		if path == "" {
+			return nil, fmt.Errorf("no spanner database path specified")
+		}
+
+		sp, err := backends.NewSpanner(context.Background(), path)
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to create spanner backend: %v", err)
+		}
+		svc.db = sp
+	default:
+		return nil, fmt.Errorf("backend not specified or invalid")
+	}
+
+	return &svc, nil
+}
+func config() error {
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(".")
+
+	pflag.Int("port", 9876, "listen port for gRPC connections")
+	pflag.String("backend", "", "backend to use for locking")
+	pflag.String("spanner.database", "", "spanner database path to use")
+	pflag.Parse()
+	viper.BindPFlags(pflag.CommandLine)
+
+	err := viper.ReadInConfig()
+	switch err.(type) {
+	case viper.ConfigFileNotFoundError:
+		break
+	default:
+		return err
+	}
+
+	return nil
 }
 
 func main() {
-	l, err := net.Listen("tcp", port)
+
+	if err := config(); err != nil {
+		log.Fatalf("error reading config: %v", err)
+	}
+
+	l, err := net.Listen("tcp", fmt.Sprintf(":%d", viper.GetInt("port")))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
 	s := grpc.NewServer()
 
-	// TODO(lobato): Create config
-	sp, err := backends.NewSpanner(context.Background(), "projects/test/instances/test/databases/test")
+	svc, err := createService()
 	if err != nil {
-		log.Fatalf("failed to create spanner backend: %v", err)
+		log.Fatalf("error creating service: %v", err)
 	}
 
-	pb.RegisterLockServiceServer(s, &service{
-		db: sp,
-	})
+	pb.RegisterLockServiceServer(s, svc)
 
-	log.Printf("starting server on port %s", port)
+	log.Printf("starting server on port %d", viper.GetInt("port"))
 	if err := s.Serve(l); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
