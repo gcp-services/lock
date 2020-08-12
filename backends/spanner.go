@@ -121,7 +121,7 @@ func (s *Spanner) applyLock(txn *spanner.ReadWriteTransaction, in *pb.TryLockReq
 // will return immediately with the reason for lock acquisition failure.
 func (s *Spanner) TryLock(ctx context.Context, in *pb.TryLockRequest) (*pb.TryLockResponse, error) {
 	if _, err := s.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		row, err := txn.ReadRow(ctx, "Locks", spanner.Key{"uuid"}, []string{"owner", "expires"})
+		row, err := txn.ReadRow(ctx, "Locks", spanner.Key{in.Lock.GetUuid()}, []string{"uuid", "owner", "expires"})
 		switch {
 		case spanner.ErrCode(err) == codes.NotFound:
 			return s.applyLock(txn, in)

@@ -36,16 +36,27 @@ func TestEndToEnd(t *testing.T) {
 		t.Fatalf("unable to create database schema: %v", err)
 	}
 
+	// Create a lock.
 	expires := time.Now().Add(time.Second * 30)
-	_, err = sp.TryLock(ctx, &pb.TryLockRequest{
+	if _, err = sp.TryLock(ctx, &pb.TryLockRequest{
 		Lock: &pb.Lock{
 			Uuid:    "1234",
 			Owner:   "1234",
 			Expires: timestamppb.New(expires),
 		},
-	})
-
-	if err != nil {
+	}); err != nil {
 		t.Fatalf("error trying to lock: %v", err)
 	}
+
+	// Attempt to relock.
+	if _, err = sp.TryLock(ctx, &pb.TryLockRequest{
+		Lock: &pb.Lock{
+			Uuid:    "1234",
+			Owner:   "1234",
+			Expires: timestamppb.New(expires),
+		},
+	}); err != ErrLockBusy {
+		t.Fatalf("expected lock to be busy, instead: %v", err)
+	}
+
 }
