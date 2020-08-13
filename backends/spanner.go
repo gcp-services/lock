@@ -175,7 +175,12 @@ func (s *Spanner) Refresh(ctx context.Context, in *pb.RefreshRequest) (*pb.Refre
 		}
 
 		// Check if the refresh time is before the current expiry time.
-		if in.Lock.Expires.AsTime().Before(expires) {
+		ts, err := ptypes.Timestamp(in.Lock.Expires)
+		if err != nil {
+			return err
+		}
+
+		if ts.Before(expires) {
 			return ErrLockInvalidRefresh
 		}
 
