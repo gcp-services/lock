@@ -66,7 +66,7 @@ func (s *service) Lock(ctx context.Context, in *pb.LockRequest) (*pb.LockRespons
 }
 
 func (s *service) Refresh(ctx context.Context, in *pb.RefreshRequest) (*pb.RefreshResponse, error) {
-	return nil, nil
+	return s.db.Refresh(ctx, in)
 }
 
 func (s *service) Release(ctx context.Context, in *pb.ReleaseRequest) (*pb.ReleaseResponse, error) {

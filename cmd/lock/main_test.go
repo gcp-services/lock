@@ -168,6 +168,7 @@ func TestServer(t *testing.T) {
 			t.Fatalf("lock should be busy, instead: %v", err)
 		}
 
+		expires = time.Now().Add(time.Second * 10)
 		// Try to lock and wait for the previous lock to expire.
 		if _, err = svc.Lock(ctx, &pb.LockRequest{
 			Lock: &pb.Lock{
@@ -178,6 +179,29 @@ func TestServer(t *testing.T) {
 			Timeout: durationpb.New(time.Second * 4),
 		}); err != nil {
 			t.Fatalf("error trying to lock: %v", err)
+		}
+
+		// Try to refresh the lock to an earlier expiry.
+		expires = expires.Add(-time.Second)
+		if _, err = svc.Refresh(ctx, &pb.RefreshRequest{
+			Lock: &pb.Lock{
+				Uuid:    "1234",
+				Owner:   "1234",
+				Expires: timestamppb.New(expires),
+			},
+		}); err != backends.ErrLockInvalidRefresh {
+			t.Fatalf("error refreshing lock: %v", err)
+		}
+
+		// Try to refresh a lock that doesn't exist.
+		if _, err = svc.Refresh(ctx, &pb.RefreshRequest{
+			Lock: &pb.Lock{
+				Uuid:    "123456",
+				Owner:   "1234",
+				Expires: timestamppb.New(expires),
+			},
+		}); err != backends.ErrLockNotFound {
+			t.Fatalf("error refreshing lock: %v", err)
 		}
 	}
 }

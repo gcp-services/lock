@@ -141,13 +141,12 @@ func (s *Spanner) TryLock(ctx context.Context, in *pb.TryLockRequest) (*pb.TryLo
 		if time.Now().After(expires) {
 			return s.applyLock(txn, in)
 		}
-
 		return ErrLockBusy
 	}); err != nil {
 		return nil, err
 	}
 
-	return nil, nil
+	return &pb.TryLockResponse{}, nil
 }
 
 // Lock will attempt to acquire a lock, blocking until a lock is acquired or until
@@ -158,7 +157,37 @@ func (s *Spanner) Lock(ctx context.Context, in *pb.LockRequest) (*pb.LockRespons
 
 // Refresh will refresh a lock lease and extend the time a valid lock is held.
 func (s *Spanner) Refresh(ctx context.Context, in *pb.RefreshRequest) (*pb.RefreshResponse, error) {
-	return nil, nil
+
+	if _, err := s.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		row, err := txn.ReadRow(ctx, "Locks", spanner.Key{in.Lock.GetUuid()}, []string{"uuid", "owner", "expires"})
+		switch {
+		case spanner.ErrCode(err) == codes.NotFound:
+			return ErrLockNotFound
+		case err != nil:
+			return err
+		}
+
+		// A lock entry was found, validate it.
+		readLock := pb.Lock{}
+		var expires time.Time
+		if err = row.Columns(&readLock.Uuid, &readLock.Owner, &expires); err != nil {
+			return err
+		}
+
+		// Check if the refresh time is before the current expiry time.
+		if in.Lock.Expires.AsTime().Before(expires) {
+			return ErrLockInvalidRefresh
+		}
+
+		return s.applyLock(txn, &pb.TryLockRequest{
+			Lock: in.Lock,
+		})
+
+	}); err != nil {
+		return nil, err
+	}
+
+	return &pb.RefreshResponse{}, nil
 }
 
 // Release will release a lock that was previously acquired.
