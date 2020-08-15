@@ -1,9 +1,10 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
     srcs = [
         "bigtable.go",
+        "lock.go",
         "memcache.go",
         "mysql.go",
         "postgres.go",
@@ -21,5 +22,23 @@ go_library(
         "@go_googleapis//google/spanner/admin/database/v1:database_go_proto",
         "@org_golang_google_api//option:go_default_library",
         "@org_golang_google_grpc//codes:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "all_test.go",
+        "spanner_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = [
+        "//storage:go_default_library",
+        "@com_github_spf13_viper//:go_default_library",
+        "@com_google_cloud_go_spanner//spannertest:go_default_library",
+        "@org_golang_google_api//option:go_default_library",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_protobuf//types/known/durationpb:go_default_library",
+        "@org_golang_google_protobuf//types/known/timestamppb:go_default_library",
     ],
 )

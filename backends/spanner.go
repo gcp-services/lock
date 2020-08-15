@@ -152,7 +152,7 @@ func (s *Spanner) TryLock(ctx context.Context, in *pb.TryLockRequest) (*pb.TryLo
 // Lock will attempt to acquire a lock, blocking until a lock is acquired or until
 // the timeout is met.
 func (s *Spanner) Lock(ctx context.Context, in *pb.LockRequest) (*pb.LockResponse, error) {
-	return nil, nil
+	return doLock(ctx, s, in)
 }
 
 // Refresh will refresh a lock lease and extend the time a valid lock is held.

@@ -95,6 +95,7 @@ func createService() (*service, error) {
 
 	return &svc, nil
 }
+
 func config() error {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
