@@ -3,7 +3,6 @@ package backends
 import (
 	"context"
 	"encoding/binary"
-	"log"
 	"time"
 
 	"cloud.google.com/go/bigtable"
@@ -104,21 +103,8 @@ func (b *Bigtable) TryLock(ctx context.Context, in *pb.TryLockRequest) (*pb.TryL
 	case applied:
 		return &pb.TryLockResponse{}, nil
 	}
-	log.Printf("applied is %v\n", applied)
-	/*
-		// Try to apply the lock if the row doesn't exist.
-		matched, err = b.applyLock(ctx, "", in)
-		switch {
-		case err != nil:
-			return nil, err
-		case matched:
-			log.Printf("matched is %v\n", matched)
-		}
-	*/
-	// Cond write, if etag == "", etag = new random uuid
-	// ReadRow
-	// Check time/owner/etc
-	// Apply write via cond write along with a NEW etag value
+
+	// Read the row for this lock from Bigtable.
 	row, err := b.table.ReadRow(ctx, in.Lock.Uuid)
 	if err != nil {
 		return nil, err
