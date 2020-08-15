@@ -41,6 +41,7 @@ func testServer(t *testing.T, backend *testBackend) {
 	}); err != nil {
 		t.Fatalf("error trying to lock: %v", err)
 	}
+
 	// Attempt to relock.
 	if _, err = svc.TryLock(ctx, &pb.TryLockRequest{
 		Lock: &pb.Lock{

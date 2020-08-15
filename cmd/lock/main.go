@@ -104,6 +104,7 @@ func config() error {
 	pflag.Int("port", 9876, "listen port for gRPC connections")
 	pflag.String("backend", "", "backend to use for locking")
 	pflag.String("spanner.database", "", "spanner database path to use")
+	pflag.String("bigtable.table", "", "bigtable table to use for locks")
 	pflag.Parse()
 	viper.BindPFlags(pflag.CommandLine)
 

@@ -17,6 +17,9 @@ go_library(
     deps = [
         "//storage:go_default_library",
         "@com_github_golang_protobuf//ptypes:go_default_library_gen",
+        "@com_github_google_uuid//:go_default_library",
+        "@com_github_spf13_viper//:go_default_library",
+        "@com_google_cloud_go_bigtable//:go_default_library",
         "@com_google_cloud_go_spanner//:go_default_library",
         "@com_google_cloud_go_spanner//admin/database/apiv1:go_default_library",
         "@go_googleapis//google/spanner/admin/database/v1:database_go_proto",
@@ -29,12 +32,14 @@ go_test(
     name = "go_default_test",
     srcs = [
         "all_test.go",
+        "bigtable_test.go",
         "spanner_test.go",
     ],
     embed = [":go_default_library"],
     deps = [
         "//storage:go_default_library",
         "@com_github_spf13_viper//:go_default_library",
+        "@com_google_cloud_go_bigtable//bttest:go_default_library",
         "@com_google_cloud_go_spanner//spannertest:go_default_library",
         "@org_golang_google_api//option:go_default_library",
         "@org_golang_google_grpc//:go_default_library",

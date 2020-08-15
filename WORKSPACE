@@ -1243,3 +1243,17 @@ go_repository(
     sum = "h1:+Z5KGCizgyZCbGh1KZqA0fcLLkwbsjIzS4aV2v7wJX0=",
     version = "v1.4.2",
 )
+
+go_repository(
+    name = "com_google_cloud_go_bigtable",
+    importpath = "cloud.google.com/go/bigtable",
+    sum = "h1:ylPDE1w1+koWpPOzf8HkX2PqKaIvN8hPc9t+F0GT3do=",
+    version = "v1.5.0",
+)
+
+go_repository(
+    name = "com_github_google_uuid",
+    importpath = "github.com/google/uuid",
+    sum = "h1:Gkbcsh/GbpXz7lPftLA3P6TYMwjCLYm83jiFQZF/3gY=",
+    version = "v1.1.1",
+)
