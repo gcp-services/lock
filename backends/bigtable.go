@@ -3,6 +3,7 @@ package backends
 import (
 	"context"
 	"encoding/binary"
+	"log"
 	"time"
 
 	"cloud.google.com/go/bigtable"
@@ -56,7 +57,7 @@ func (b *Bigtable) applyLock(ctx context.Context, tag string, in *pb.TryLockRequ
 	} else {
 		filter = bigtable.ChainFilters(
 			bigtable.FamilyFilter("Locks"),
-			bigtable.ColumnFilter("Locks:etag"),
+			bigtable.ColumnFilter("etag"),
 			bigtable.ValueFilter(tag),
 		)
 	}
@@ -131,7 +132,7 @@ func (b *Bigtable) TryLock(ctx context.Context, in *pb.TryLockRequest) (*pb.TryL
 
 	// Decode the expiry time for the lock.
 	expires := time.Unix(int64(binary.BigEndian.Uint64(values["Locks:expires"])), 0)
-
+	log.Printf("expires is %v and intime is %v and now is %v", expires.Unix(), in.Lock.Expires.AsTime().Unix(), time.Now().Unix())
 	// Check if this lock can be applied, and try to do so.
 	if time.Now().After(expires) {
 		applied, err := b.applyLock(ctx, string(values["Locks:etag"]), in)
@@ -157,7 +158,35 @@ func (b *Bigtable) Refresh(_ context.Context, _ *pb.RefreshRequest) (*pb.Refresh
 	//panic("not implemented") // TODO: Implement
 }
 
-func (b *Bigtable) Release(_ context.Context, _ *pb.ReleaseRequest) (*pb.ReleaseResponse, error) {
-	return nil, nil
-	//panic("not implemented") // TODO: Implement
+// Release will release a lock that was previously acquired.
+func (b *Bigtable) Release(ctx context.Context, in *pb.ReleaseRequest) (*pb.ReleaseResponse, error) {
+	row, err := b.table.ReadRow(ctx, in.Lock.Uuid)
+	if err != nil {
+		return nil, err
+	}
+
+	values := make(map[string][]byte)
+	for _, column := range row["Locks"] {
+		values[column.Column] = column.Value
+	}
+
+	if string(values["Locks:owner"]) != in.Lock.Owner {
+		return nil, ErrLockInvalidOwner
+	}
+
+	filter := bigtable.ChainFilters(
+		bigtable.FamilyFilter("Locks"),
+		bigtable.ColumnFilter("owner"),
+		bigtable.ValueFilter(in.Lock.Owner),
+	)
+	m := bigtable.NewMutation()
+	m.DeleteRow()
+	condMut := bigtable.NewCondMutation(filter, m, nil)
+	var matched bool
+	opt := bigtable.GetCondMutationResult(&matched)
+	if err := b.table.Apply(ctx, in.Lock.Uuid, condMut, opt); err != nil {
+		return nil, err
+	}
+	log.Printf("matched is %v\n", matched)
+	return &pb.ReleaseResponse{}, nil
 }

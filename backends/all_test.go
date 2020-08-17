@@ -101,7 +101,7 @@ func testServer(t *testing.T, backend *testBackend) {
 		t.Fatalf("error trying to lock: %v", err)
 	}
 
-	expires = time.Now().Add(time.Second * 3)
+	expires = time.Now().Add(time.Second * 4)
 	// Lock again with a longer expiry.
 	if _, err = svc.Lock(ctx, &pb.LockRequest{
 		Lock: &pb.Lock{
